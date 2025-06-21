@@ -1,8 +1,6 @@
 pipeline {
-    // Run this pipeline on any available Jenkins agent
     agent any
 
-    // Environment variables available to all stages
     environment {
         DOCKER_HUB_CREDENTIALS_ID = 'dockerhub-credentials'
         DOCKER_IMAGE_NAME         = 'ayoubdev29/backend-service'
@@ -11,7 +9,6 @@ pipeline {
     stages {
         stage('1. Checkout') {
             steps {
-                // This step checks out the code from the repository configured in the Jenkins job
                 checkout scm
             }
         }
@@ -19,11 +16,13 @@ pipeline {
         stage('2. Build Docker Image') {
             steps {
                 script {
-                    // We will tag our image with the unique Git commit hash for good versioning
-                    def commitHash = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
-                    docker.build("${DOCKER_IMAGE_NAME}:${commitHash}", ".")
-                    // Also tag it as 'latest' for convenience
-                    docker.image("${DOCKER_IMAGE_NAME}:${commitHash}").tag("${DOCKER_IMAGE_NAME}:latest")
+                    // We will build the image and tag it with the unique Git commit hash.
+                    // The docker.build command returns an object representing the image.
+                    def builtImage = docker.build("${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}", ".")
+
+                    // Now, add the 'latest' tag to the image we just built.
+                    // The .tag() method only needs the new tag name.
+                    builtImage.tag("latest")
                 }
             }
         }
@@ -31,10 +30,13 @@ pipeline {
         stage('3. Push to Docker Hub') {
             steps {
                 script {
-                    def commitHash = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
-                    // Use the 'dockerhub-credentials' we stored in Jenkins to log in and push
+                    // Use the 'dockerhub-credentials' we stored in Jenkins to log in
                     docker.withRegistry('https://registry.hub.docker.com', DOCKER_HUB_CREDENTIALS_ID) {
-                        docker.image("${DOCKER_IMAGE_NAME}:${commitHash}").push()
+
+                        // Push the tag with the build number
+                        docker.image("${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}").push()
+
+                        // Push the 'latest' tag
                         docker.image("${DOCKER_IMAGE_NAME}:latest").push()
                     }
                 }
