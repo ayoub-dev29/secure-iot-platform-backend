@@ -45,19 +45,20 @@ pipeline {
 
         stage('4. Deploy to Kubernetes') {
             steps {
-                // Use the kubeconfig file we stored as a secret in Jenkins
-                withKubeConfig([credentialsId: KUBECONFIG_CREDENTIAL_ID]) {
-                    script {
-                        echo "Applying Kubernetes manifests..."
-                        // Apply the deployment and service files from the k8s directory
-                        sh "kubectl apply -f k8s/"
+                // This block securely loads the AWS credentials and sets the region
+                withAWS(credentials: 'aws-credentials', region: 'eu-west-3') {
+                    // This block loads the kubeconfig file
+                    withKubeConfig([credentialsId: KUBECONFIG_CREDENTIAL_ID]) {
+                        script {
+                            echo "Applying Kubernetes manifests..."
+                            sh "kubectl apply -f k8s/"
 
-                        echo "Updating deployment with new image..."
-                        // Tell the deployment to use the new image we just built
-                        sh "kubectl set image deployment/backend-service-deployment backend-service-container=${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}"
+                            echo "Updating deployment with new image..."
+                            sh "kubectl set image deployment/backend-service-deployment backend-service-container=${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}"
 
-                        echo "Waiting for rollout to complete..."
-                        sh "kubectl rollout status deployment/backend-service-deployment"
+                            echo "Waiting for rollout to complete..."
+                            sh "kubectl rollout status deployment/backend-service-deployment"
+                        }
                     }
                 }
             }
