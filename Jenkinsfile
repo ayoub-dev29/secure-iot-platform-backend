@@ -46,7 +46,7 @@ pipeline {
         stage('4. Deploy to Kubernetes') {
             steps {
                 // Use the kubeconfig file we stored as a secret in Jenkins
-                withKubeconfig([credentialsId: KUBECONFIG_CREDENTIAL_ID]) {
+                withKubeConfig([credentialsId: KUBECONFIG_CREDENTIAL_ID]) {
                     script {
                         echo "Applying Kubernetes manifests..."
                         // Apply the deployment and service files from the k8s directory
